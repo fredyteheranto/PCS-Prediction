@@ -13,8 +13,7 @@ const {
   SCREENERS_ENUM,
   EXCHANGES_ENUM,
   INTERVALS_ENUM,
-} = require("trading-view-recommends-parser-nodejs");
-
+} = require("@anhnguyenbk/trading-view-recommends-parser-nodejs");
 // Global Config
 const GLOBAL_CONFIG = {
   BET_AMOUNT: 4, // in USD
@@ -115,6 +114,7 @@ const strategy = async (minAcurracy, epoch) => {
   try {
     BNBPrice = await getBNBPrice();
   } catch (err) {
+    console.log(`Error getting price from API`, err);
     return;
   }
   let signals = await getSignals();
@@ -187,6 +187,7 @@ predictionContract.on("StartRound", async (epoch) => {
 predictionContract.on("EndRound", async (epoch) => {
   await saveRound(epoch);
   let stats = await getStats();
+  console.log("stats", stats);
   console.log("--------------------------------");
   console.log(`🍀 Fortune: ${stats.percentage}`);
   console.log(`👍 ${stats.win}|${stats.loss} 👎 `);

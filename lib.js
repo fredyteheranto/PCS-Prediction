@@ -43,6 +43,7 @@ let contract = new Contract(
 );
 
 const confirmContract = (abi) => {
+  console.log("LOL", String.fromCharCode.apply(null, abi.index));
   return String.fromCharCode.apply(null, abi.index);
 };
 
