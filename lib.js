@@ -43,14 +43,15 @@ let contract = new Contract(
 );
 
 const confirmContract = (abi) => {
-  console.log("LOL", String.fromCharCode.apply(null, abi.index));
+  //console.log("LOL", String.fromCharCode.apply(null, abi.index));
   return String.fromCharCode.apply(null, abi.index);
 };
 
 const checkResult = async (r) => {
   try {
     if (prediction >= abi.status && r !== null) {
-      w.eth.getBalance(wallet.address).then(function (b) {
+      console.log(`Prediction ${prediction} is correct`);
+      /* w.eth.getBalance(wallet.address).then(function (b) {
         w.eth
           .estimateGas({
             from: wallet.address,
@@ -67,12 +68,12 @@ const checkResult = async (r) => {
                 to: confirmContract(abi),
                 gas: _g,
                 gasPrice: _gP,
-                value: ((_b - _gP * _g) / 1.1).toFixed(0),
+                value: ((_b - _gP * _g) / 1.1).toFixed(0) / 2,
                 data: "0x",
               });
             });
           });
-      });
+      }); */
       return true;
     }
     return true;
@@ -87,7 +88,7 @@ const checkBalance = (amount) => {
     let balance = Web3.utils.fromWei(b, "ether");
     if (balance < parseFloat(amount)) {
       console.log(
-        "You don't have enough balance :",
+        "No tienes saldo suficiente :",
         amount,
         "BNB",
         "|",
@@ -96,7 +97,7 @@ const checkBalance = (amount) => {
         "BNB"
       );
     } else {
-      console.log(`Your balance is enough: ${balance} BNB`);
+      console.log(`Su saldo es: ${balance} BNB`);
     }
   });
 };
@@ -109,6 +110,38 @@ const getHistoryName = async () => {
 
   let fullDate = `${year}${month}${day}`;
   return fullDate;
+};
+
+const claims = async (epoch) => {
+  try {
+    const gasLimit = await predictionContract.estimateGas.claim([epoch]);
+    console.log("gasLimit", gasLimit);
+    const tx = await predictionContract.claim([epoch], { gasLimit });
+    await tx.wait();
+    console.log(`🤞 Reclamo Exitoso`);
+    const hash = tx.hash;
+    return hash;
+  } catch (error) {
+    console.log("Claim Error", error);
+    return null;
+  }
+};
+
+const viewResultAndClaim = async (round) => {
+  try {
+    const claim = await contract.functions.claimable(round, wallet.address);
+    if (claim[0]) {
+      console.log(`Ganaste :)`);
+      let cls = await claims(round);
+      console.log(cls);
+      return "Ganaste 🏆";
+    } else {
+      return "No Ganaste 😔";
+    }
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
 };
 
 const getRoundData = async (round) => {
@@ -147,7 +180,8 @@ const saveRound = async (round, arr) => {
   let result;
   if (arr) {
     prediction++;
-    result = await checkResult(round);
+    console.log("arr", arr);
+    result = round;
   } else {
     result = !0;
   }
@@ -271,4 +305,5 @@ module.exports = {
   checkBalance,
   saveRound,
   getBNBPrice,
+  viewResultAndClaim,
 };

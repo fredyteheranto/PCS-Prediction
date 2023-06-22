@@ -7,6 +7,7 @@ const {
   checkBalance,
   reduceWaitingTimeByTwoBlocks,
   saveRound,
+  viewResultAndClaim,
 } = require("./lib");
 const {
   TradingViewScan,
@@ -16,9 +17,9 @@ const {
 } = require("@anhnguyenbk/trading-view-recommends-parser-nodejs");
 // Global Config
 const GLOBAL_CONFIG = {
-  BET_AMOUNT: 4, // in USD
-  DAILY_GOAL: 30, // in USD,
-  WAITING_TIME: 265000, // in Miliseconds (4.3 Minutes)
+  BET_AMOUNT: 5, // in USD
+  DAILY_GOAL: 500, // in USD,
+  WAITING_TIME: 258000, // in Miliseconds (4.3 Minutes)
   THRESHOLD: 55, // Minimum % of certainty of signals (50 - 100)
 };
 
@@ -29,7 +30,7 @@ const betUp = async (amount, epoch) => {
       value: parseEther(amount.toFixed(18).toString()),
     });
     await tx.wait();
-    console.log(`🤞 Successful bet of ${amount} BNB to UP 🍀`);
+    console.log(`🤞 Apuesta exitosa de ${amount} BNB a UP 🍀`);
   } catch (error) {
     console.log("Transaction Error", error);
     GLOBAL_CONFIG.WAITING_TIME = reduceWaitingTimeByTwoBlocks(
@@ -45,7 +46,7 @@ const betDown = async (amount, epoch) => {
       value: parseEther(amount.toFixed(18).toString()),
     });
     await tx.wait();
-    console.log(`🤞 Successful bet of ${amount} BNB to DOWN 🍁`);
+    console.log(`🤞 Apuesta exitosa de ${amount} BNB a DOWN 🍁`);
   } catch (error) {
     console.log("Transaction Error", error);
     GLOBAL_CONFIG.WAITING_TIME = reduceWaitingTimeByTwoBlocks(
@@ -106,25 +107,27 @@ const percentage = (a, b) => {
 //Strategy of betting
 const strategy = async (minAcurracy, epoch) => {
   let BNBPrice;
-  let earnings = await getStats();
+  /*let earnings = await getStats();
   if (earnings.profit_USD >= GLOBAL_CONFIG.DAILY_GOAL) {
-    console.log("🧞 Daily goal reached. Shuting down... ✨ ");
+    console.log("🧞 Meta diaria alcanzada... ✨ ");
     process.exit();
-  }
+  } */
   try {
     BNBPrice = await getBNBPrice();
+    console.log(BNBPrice);
   } catch (err) {
     console.log(`Error getting price from API`, err);
     return;
   }
   let signals = await getSignals();
+  console.log("signals", signals);
   if (signals) {
     if (
       signals.buy > signals.sell &&
       percentage(signals.buy, signals.sell) > minAcurracy
     ) {
       console.log(
-        `${epoch.toString()} 🔮 Prediction: UP 🟢 ${percentage(
+        `${epoch.toString()} 🔮 Predicción: UP 🟢 ${percentage(
           signals.buy,
           signals.sell
         )}%`
@@ -142,7 +145,7 @@ const strategy = async (minAcurracy, epoch) => {
       percentage(signals.sell, signals.buy) > minAcurracy
     ) {
       console.log(
-        `${epoch.toString()} 🔮 Prediction: DOWN 🔴 ${percentage(
+        `${epoch.toString()} 🔮 Predicción: DOWN 🔴 ${percentage(
           signals.sell,
           signals.buy
         )}%`
@@ -162,7 +165,7 @@ const strategy = async (minAcurracy, epoch) => {
       } else {
         lowPercentage = percentage(signals.sell, signals.buy);
       }
-      console.log("Waiting for next round 🕑", lowPercentage + "%");
+      console.log("Esperando la próxima ronda 🕑", lowPercentage + "%");
     }
   } else {
     console.log("Error obtaining signals");
@@ -171,13 +174,15 @@ const strategy = async (minAcurracy, epoch) => {
 
 //Check balance
 checkBalance(GLOBAL_CONFIG.AMOUNT_TO_BET);
-console.log("🤗 Welcome! Waiting for next round...");
+console.log("🤗 Bienvenido! Esperando la próxima ronda...");
 
 //Betting
 predictionContract.on("StartRound", async (epoch) => {
-  console.log("🥞 Starting round " + epoch.toString());
+  console.log("🥞 Ronda inicial " + epoch.toString());
   console.log(
-    "🕑 Waiting " + (GLOBAL_CONFIG.WAITING_TIME / 60000).toFixed(1) + " minutes"
+    "🕑 Esperando " +
+      (GLOBAL_CONFIG.WAITING_TIME / 60000).toFixed(1) +
+      " Minutos Para mostrar los resultados"
   );
   await sleep(GLOBAL_CONFIG.WAITING_TIME);
   await strategy(GLOBAL_CONFIG.THRESHOLD, epoch);
@@ -187,10 +192,13 @@ predictionContract.on("StartRound", async (epoch) => {
 predictionContract.on("EndRound", async (epoch) => {
   await saveRound(epoch);
   let stats = await getStats();
-  console.log("stats", stats);
-  console.log("--------------------------------");
-  console.log(`🍀 Fortune: ${stats.percentage}`);
-  console.log(`👍 ${stats.win}|${stats.loss} 👎 `);
-  console.log(`💰 Profit: ${stats.profit_USD.toFixed(3)} USD`);
-  console.log("--------------------------------");
+  let claim = await viewResultAndClaim(epoch);
+  console.log("--------------RESULTADOS------------------");
+  console.log(`Porcentaje total del juego 🍀: ${stats.percentage}`);
+  console.log(`Juego numero #️⃣: ${epoch.toString()}`);
+  console.log(`Resultado del Juego 🎰: ${claim}`);
+  console.log(`TOTAL GANADAS 👍  ${stats.win}`);
+  console.log(`TOTAL PERDIDAS 👎  ${stats.loss}`);
+  console.log(`💰 Ganancias: ${stats.profit_USD.toFixed(3)} en USD`);
+  console.log("------------------------------------------");
 });
